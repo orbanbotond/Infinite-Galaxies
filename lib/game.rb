@@ -10,18 +10,23 @@ module InfiniteGalaxies
         @orbiting_ships = []
       end
 
+      def may_orbit?(empire)
+        !orbiting?(empire)
+      end
+
       def orbit(empire)
-        # The guard for not orbiting more than one ship for the empire should come here. 
-        # But if I implement in that way then the event is applyed and the event is stored...
+        raise TheEmpireCanOrbitJustOneShipsAroundTheSamePlanet.new(empire, name) unless may_orbit?(empire)
 
         orbiting_ships << empire
       end
+
+      private
 
       def orbiting?(empire)
         orbiting_ships.include?(empire)
       end
 
-      attr_reader :orbiting_ships
+      attr_reader :orbiting_ships, :name
     end
 
     class TheEmpireDoesNotHaveReadyToFlyShips < StandardError
@@ -79,7 +84,8 @@ module InfiniteGalaxies
 
     private
       def guard_if_empire_already_orbiting_around_the_planet(empire_name, planet_name)
-        raise TheEmpireCanOrbitJustOneShipsAroundTheSamePlanet.new(empire_name, planet_name) if planets_on_board[planet_name].orbiting?(empire_name)
+        # This violates the tell don't ask principle
+        raise TheEmpireCanOrbitJustOneShipsAroundTheSamePlanet.new(empire_name, planet_name) unless planets_on_board[planet_name].may_orbit?(empire_name)
       end
 
       def guard_against_placing_the_same_planet_twice(planet_name)
