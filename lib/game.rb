@@ -11,6 +11,9 @@ module InfiniteGalaxies
       end
 
       def orbit(empire)
+        # The guard for not orbiting more than one ship for the empire should come here. 
+        # But if I implement in that way then the event is applyed and the event is stored...
+
         orbiting_ships << empire
       end
 
