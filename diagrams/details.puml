@@ -1,0 +1,325 @@
+@startuml
+
+skinparam component {
+  backgroundColor<<aggregate>> Business
+  backgroundColor<<shared lib>> Green
+}
+
+skinparam class {
+  backgroundColor<<command>> LightSkyBlue
+  backgroundColor<<event>> DarkOrange
+  backgroundColor<<aggregate>> Business
+  backgroundColor<<process>> Violet
+  backgroundColor<<readmodel>> LightViolet
+}
+
+package "InfiniteGalaxies" {
+	class "ShufflePlanets" <<command>> {
+	}
+
+	class "PlanetsShuffled" <<event>> {
+		string[] planetNames
+	}
+
+	class "PlacePlanetOnboard" <<command>> {
+	}
+
+	class "PlanetPlacedOnboard" <<event>> {
+		string planetName
+	}
+
+	class Board <<aggregate>> {
+		string[] planetNames
+	}
+
+	Board .. PlanetPlacedOnboard
+
+	class Empire <<aggregate>> {
+		string name
+		integer civilisation
+		integer energy
+		integer level
+		integer free_ships
+	}
+
+	enum Action {
+	  MoveShuttle
+	  AcquireEnergy
+	  AcquireCivilization
+	  UseDiplomacy
+	  UseEconomy
+	  UseColony
+	}
+
+	class "ShuffleDices" <<command>> {
+		String empireName
+	}
+
+	class "DicesShuffled" <<event>> {
+		/' Only one shuffle in a round '/
+		String empireName
+		Action[] actions
+	}
+
+	class "ReShuffleDices" <<command>> {
+		String empireName
+		Action[] actions
+	}
+
+	class "DicesReshuffled" <<event>> {
+		/' Only one free reshuffle in a round '/
+		/' The 2nd and the next consecutive reshufles consume one energy '/
+		String empireName
+		Action[] actions
+	}
+
+	class OrbitingShip {
+		String empireName
+		integer level
+	}
+
+	class "Planet" <<aggregate>> {
+		+ bool energyProvider?()
+		+ bool civilisationProvider?()
+		+ bool colonisableByEconomy?()
+		+ bool colonisableByDiplomacy?()
+		- String name
+		- String[] landedShips
+		- OrbitingShip[] orbitingShips
+	}
+
+	class "OrbitShip" <<command>> {
+		String empireName
+		String planetName
+	}
+
+	class "ShipOrbited" <<event>> {
+		/' The empire should have a ready to fly ship in its galaxy '/
+		/' An empire can not orbit two ships around the same planet '/
+		String empireName
+		String planetName
+	}
+
+	class "LandShip" <<command>> {
+		String empireName
+		String planetName
+	}
+
+	class "ShipLanded" <<event>> {
+		/' Cross Aggregate data needed '/
+		/' This should check both the planet and both the empire '/
+		/' The planet should not have a landed ship from the same empire '/
+		/' The empire should have a ready to fly ship in its galaxy '/
+		/' It is easiest if there is only one aggregate: TheInfiniteGalaxies '/
+		String empireName
+		String planetName
+	}		
+
+	LandShip .. Empire
+	OrbitShip .. Empire
+	ShuffleDices .. Empire
+	ReShuffleDices .. Empire
+	Empire .. ShipOrbited
+	Empire .. ShipLanded
+	Empire .. DicesShuffled
+	Empire .. DicesReshuffled
+
+	class EnhanceCivilization <<command>> {
+		String empireName
+	}
+
+	class CivilizationEnhanced <<event>> {
+		/' Cross Aggregate data needed '/
+		/' The empire should have a ship on a planet which is civilisationProvider? on the board '/
+		/' It is enhanced by the number of times the number of ships the empire has on different civilisationProvider planets '/
+		/' So check the planets on board then update the empire '/
+		/' 1 query to read the planet names on board '/
+		/' n query to read the planet data from the planet aggregates '/
+		/' then enhance the number of ship the planet has either landed or orbiting '/
+		String empireName
+		integer enhance_degree
+	}
+
+	class EnhanceEnergy <<command>> {
+		String empireName
+	}
+
+	class EnergyEnhanced <<event>> {
+		/' The empire should have a ship on a planet which is energyProvider? on the board'/
+		/' It is enhanced by the number of times the number of ships the empire has on different energyProvider planets '/
+		String empireName
+		integer enhance_degree
+	}
+
+	class EnhanceDiplomacy <<command>> {
+		String empireName
+		Planet planet
+	}
+
+	class DiplomacyEnhanced <<event>> {
+		/' The empire should have a ship on a planet which is colonisable_by_diplomacy? '/
+		/' It moves the ship toward its goal '/
+		/' It also emits the PlanetColonized Event if the last diplomacy stage is reached '/
+		String empireName
+		Planet planet
+	}
+
+	class EnhanceEconomy <<command>> {
+		String empireName
+		Planet planet
+	}
+
+	class EconomyEnhanced <<event>> {
+		/' The empire should have a ship on the planet which is colonisable_by_economy? '/
+		/' It moves the ship toward its goal '/
+		/' It also emits the PlanetColonized Event if the last diplomacy stage is reached '/
+		String empireName
+		Planet planet
+	}
+
+	class PlanetColonized <<event>> {
+		/' Resets all the ships back to their empires '/
+		/' Moves the planet to its colonizing empire '/
+		/' Executes the UseConoly command '/
+		Planet planet
+	}
+
+	class EnhanceEmpire <<command>> {
+		String empireName
+	}
+
+	class EmpireEnhanced <<event>> {
+		/' The empire should have as many free energy or civilisation which is needed for its next level '/
+		/' It frees a ship for its empire'/
+		/' Decreses the free energy by the amount which is needed for its next level '/
+		String empireName
+	}
+
+	class UseColony <<command>> {
+		String empireName
+		Planet planet
+	}
+
+	class ColonyUsed <<event>> {
+		/' The empire should have colonized the planet before '/
+		/' It executes the action the planet provides '/
+		String empireName
+		Planet planet
+	}
+
+/' ---   ---   --- '/
+
+	' package "Shuffler" <<aggregate>> {
+	' }
+
+	' DecreaseEnergy .. Shuffler
+
+	' class "UseAction" <<command>> {
+	' 	Action dice
+	' }
+
+	' class "ConvertActions" <<command>> {
+	' 	Action convertable1
+	' 	Action convertable2
+	' 	Action outcome
+	' }
+
+	' enum Action {
+	'   MoveShuttle
+	'   AcquireEnergy
+	'   AcquireCivilization
+	'   UseDiplomacy
+	'   UseEconomy
+	'   UseColony
+	' }
+
+	' class "DicesShuffled" <<event>> {
+	' 	Action dice1
+	' 	Action dice2
+	' 	Action dice3
+	' 	Action dice4
+	' }
+
+	' Action .. DicesShuffled
+	' Action .. ConvertActions
+	' Action .. ReShuffleDices
+	' Action .. UseAction
+	' Action .. CommandCenter
+
+	' package "Planets" {
+	' 	class "ShufflePlanets" <<command>> {
+	' 	}
+
+	' 	class "PlacePlanet" <<command>> {
+	' 	}
+
+	' 	class "PlanetDeck" <<aggregate>> {
+	' 		Planet[] planets
+	' 	}
+
+	' 	class "PlanetPlacedOnBoard" <<event>> {
+	' 	}
+
+	' 	PlanetPlacedOnBoard .. PlanetDeck
+	' 	ShufflePlanets .. PlanetDeck
+	' 	PlacePlanet .. PlanetDeck
+	' }
+
+	' class "Game" <<process>> {
+	' 	User[] players
+	' 	Planet[] colonizablePlanets
+	' }
+
+
+
+	' PlanetPicked .. Game
+	' Game .. PlanetPlacedOnBoard
+
+	' class "GameBoard" <<aggregate>> {
+	' 	Planet[] planets
+	' }
+
+	' class "Planet" <<aggregate>> {
+	' 	landShuttle()
+	' 	orbitShuttle()
+	' 	boolean colonize(Action& action)
+	' }
+
+	' class ColonizePlanet <<command>> {
+	' 	Planet planet
+	' }
+
+	' class LandOnPlanet <<command>> {
+	' 	Planet planet
+	' }
+
+	' class "GalaxyBoard" <<aggregate>> {
+	' 	copyAction(Action& action)
+	' 	/' Invariant: canTheEnergyDecreased?'/
+	' }
+
+	' DicesShuffled .. GalaxyBoard
+	' PlanetPlacedOnBoard .. GalaxyBoard
+	' GalaxyBoard .. ColonizePlanet
+	' GalaxyBoard .. LandOnPlanet
+
+	' class "CommandCenter" <<aggregate>> {
+	' 	void useAction()
+	' 	Action convertActions()
+	' }
+
+	' class "PaymentRequestRM" <<readmodel>>
+
+	' class "DicesConverted" <<event>> {
+	' 	Action outcome
+	' }
+
+	' class "ActionUsed" <<event>> {
+	' 	Action action
+	' }
+
+	' DicesConverted .. CommandCenter
+	' ActionUsed .. CommandCenter
+}
+
+@enduml
